@@ -55,7 +55,7 @@ class Dock<T> extends StatefulWidget {
 }
 
 class _DockState<T> extends State<Dock<T>> {
-  late List<T> _items = widget.items.toList();
+  late final List<T> _items = widget.items.toList();
   int? _draggingIndex;
   int? _hoveredIndex;
 
@@ -71,24 +71,24 @@ class _DockState<T> extends State<Dock<T>> {
         mainAxisSize: MainAxisSize.min,
         children: List.generate(_items.length, (index) {
           final isDragging = _draggingIndex == index;
-          final isHoveredGap = _hoveredIndex != null &&
-              _hoveredIndex == index &&
-              _draggingIndex != null;
+          final isHoveredGap = _hoveredIndex == index && _draggingIndex != null;
 
           return Draggable<int>(
             data: index,
             feedback: Transform.scale(
-              scale: 1.15,
+              scale: 1.0,
               child: widget.builder(_items[index]),
             ),
-            onDragStarted: () => setState(() => _draggingIndex = index),
+            onDragStarted: () => setState(() {
+              _draggingIndex = index;
+            }),
             onDragEnd: (_) => setState(() {
               _draggingIndex = null;
               _hoveredIndex = null;
             }),
             childWhenDragging: const SizedBox(),
             child: DragTarget<int>(
-              onWillAcceptWithDetails: (details) {
+              onWillAccept: (data) {
                 setState(() {
                   _hoveredIndex = index;
                 });
@@ -97,8 +97,7 @@ class _DockState<T> extends State<Dock<T>> {
               onLeave: (_) => setState(() {
                 _hoveredIndex = null;
               }),
-              onAcceptWithDetails: (details) {
-                final fromIndex = details.data;
+              onAccept: (fromIndex) {
                 setState(() {
                   final item = _items.removeAt(fromIndex);
                   _items.insert(index, item);
@@ -107,67 +106,33 @@ class _DockState<T> extends State<Dock<T>> {
               },
               builder: (context, candidateData, rejectedData) {
                 return AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeInOutCubic,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
                   margin: EdgeInsets.symmetric(
-                    horizontal: isHoveredGap ? 20 : 10,
+                    horizontal: isHoveredGap ? 16 : 8, // Adjust margin for hover
                   ),
-                  width: 48.0,
-                  height: 48.0,
-                  transform: isDragging
-                      ? (Matrix4.identity()..scale(1.1))
-                      : Matrix4.identity(),
+                  width: isDragging ? 60 : 48, // Highlight the dragged item
+                  height: isDragging ? 60 : 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.primaries[
+                    _items[index].hashCode % Colors.primaries.length],
+                    boxShadow: isHoveredGap
+                        ? [
+                      const BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      )
+                    ]
+                        : [],
+                  ),
                   child: widget.builder(_items[index]),
                 );
               },
             ),
           );
         }),
-      ),
-    );
-  }
-}
-
-class DockItem extends StatefulWidget {
-  final IconData icon;
-  const DockItem({Key? key, required this.icon}) : super(key: key);
-
-  @override
-  _DockItemState createState() => _DockItemState();
-}
-
-class _DockItemState extends State<DockItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: _isHovered ? 60 : 48,
-        height: _isHovered ? 60 : 48,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.primaries[widget.icon.hashCode % Colors.primaries.length],
-          boxShadow: _isHovered
-              ? [
-            const BoxShadow(
-              color: Colors.black45,
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ]
-              : [],
-        ),
-        child: Center(
-          child: Icon(
-            widget.icon,
-            color: Colors.white,
-            size: _isHovered ? 30 : 24,
-          ),
-        ),
       ),
     );
   }
